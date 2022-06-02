@@ -1,23 +1,24 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreatePlayerDto } from './dtos/createPlayer.dto';
 import { Player } from './interfaces/player.interface';
-import { v4 as uuid } from 'uuid';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class PlayersService {
-  private players: Player[] = [];
+  constructor(
+    @InjectModel('Player') private readonly playerModel: Model<Player>,
+  ) {}
 
   async createOrUpdatePlayer(
     createPlayerDto: CreatePlayerDto,
   ): Promise<Player> {
     const { email } = createPlayerDto;
 
-    const player = this.players.find((p) => p.email === email);
+    const player = await this.playerModel.findOne({ email });
 
     if (player) {
-      const updatedPlayer = await this.update(player, createPlayerDto);
-
-      Object.assign(player, updatedPlayer);
+      await this.update(player, createPlayerDto);
 
       return player;
     }
@@ -28,11 +29,11 @@ export class PlayersService {
   }
 
   async getPlayers(): Promise<Player[]> {
-    return this.players;
+    return this.playerModel.find().exec();
   }
 
   async getPlayerByEmail(email: string): Promise<Player> {
-    const player = this.players.find((p) => p.email === email);
+    const player = await this.playerModel.findOne({ email }).exec();
     if (!player) {
       throw new NotFoundException(`Player with email ${email} not found`);
     }
@@ -48,27 +49,18 @@ export class PlayersService {
     player: Player,
     createPlayerDto: CreatePlayerDto,
   ): Promise<Player> {
-    return { ...player, ...createPlayerDto };
+    await player.update(createPlayerDto);
+
+    return player;
   }
 
   private async delete(email: string): Promise<void> {
-    this.players = this.players.filter((p) => p.email !== email);
+    await this.playerModel.deleteOne({ email });
   }
 
   private async create(createPlayerDto: CreatePlayerDto): Promise<Player> {
-    const { email, name, phoneNumber } = createPlayerDto;
-
-    const player: Player = {
-      _id: uuid(),
-      name,
-      phoneNumber,
-      email,
-      ranking: 'A',
-      rankingPosition: 0,
-      imageUrl: '',
-    };
-
-    this.players.push(player);
+    const player = await this.playerModel.create(createPlayerDto);
+    await player.save();
 
     return player;
   }
