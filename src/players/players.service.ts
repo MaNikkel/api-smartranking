@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreatePlayerDto } from './dtos/createPlayer.dto';
 import { Player } from './interfaces/player.interface';
 import { InjectModel } from '@nestjs/mongoose';
@@ -10,22 +14,29 @@ export class PlayersService {
     @InjectModel('Player') private readonly playerModel: Model<Player>,
   ) {}
 
-  async createOrUpdatePlayer(
+  async updatePlayer(
+    id: string,
     createPlayerDto: CreatePlayerDto,
   ): Promise<Player> {
-    const { email } = createPlayerDto;
+    const player = await this.playerModel.findById(id).exec();
 
-    const player = await this.playerModel.findOne({ email });
-
-    if (player) {
-      await this.update(player, createPlayerDto);
-
-      return player;
+    if (!player) {
+      throw new NotFoundException(`Player with id ${id} not found`);
     }
 
-    const newPlayer = await this.create(createPlayerDto);
+    return await this.update(player, createPlayerDto);
+  }
 
-    return newPlayer;
+  async createPlayer(createPlayerDto: CreatePlayerDto): Promise<Player> {
+    const player = await this.getPlayerByEmail(createPlayerDto.email);
+
+    if (player) {
+      throw new BadRequestException(
+        `Player with email ${createPlayerDto.email} already exists`,
+      );
+    }
+
+    return await this.create(createPlayerDto);
   }
 
   async getPlayers(): Promise<Player[]> {
@@ -41,7 +52,21 @@ export class PlayersService {
     return player;
   }
 
+  async getPlayerById(id: string): Promise<Player> {
+    const player = await this.playerModel.findById(id).exec();
+    if (!player) {
+      throw new NotFoundException(`Player with id ${id} not found`);
+    }
+
+    return player;
+  }
+
   async deletePlayerByEmail(email: string): Promise<void> {
+    const player = await this.getPlayerByEmail(email);
+    if (!player) {
+      throw new NotFoundException(`Player with email ${email} not found`);
+    }
+
     return await this.delete(email);
   }
 
@@ -49,9 +74,11 @@ export class PlayersService {
     player: Player,
     createPlayerDto: CreatePlayerDto,
   ): Promise<Player> {
-    await player.update(createPlayerDto);
+    const updated = await this.playerModel
+      .findOneAndUpdate({ _id: player._id }, createPlayerDto, { new: true })
+      .exec();
 
-    return player;
+    return updated;
   }
 
   private async delete(email: string): Promise<void> {
