@@ -9,11 +9,11 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { ParamsValidationPipe } from 'src/common/pipes/paramsValidation.pipe';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dtos/createCategory.dto';
 import { UpdateCategoryDto } from './dtos/updateCategory.dto';
 import { Category } from './interfaces/category.interface';
-import { CategoriesIdParamValidationPipe } from './pipes/categoriesParamsValidation.pipe';
 
 @Controller('api/v1/categories')
 export class CategoriesController {
@@ -34,7 +34,7 @@ export class CategoriesController {
   @Put(':id')
   @UsePipes(ValidationPipe)
   async updateCategory(
-    @Param('id', CategoriesIdParamValidationPipe) id: string,
+    @Param('id', ParamsValidationPipe) id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ) {
     return await this.categoriesService.updateCategory(id, updateCategoryDto);
@@ -47,22 +47,22 @@ export class CategoriesController {
 
   @Get(':id')
   async getCategoryById(
-    @Param('id', CategoriesIdParamValidationPipe) id: string,
+    @Param('id', ParamsValidationPipe) id: string,
   ): Promise<Category> {
     return await this.categoriesService.getCategory(id);
   }
 
   @Delete(':id')
   async deleteCategory(
-    @Param('id', CategoriesIdParamValidationPipe) id: string,
+    @Param('id', ParamsValidationPipe) id: string,
   ): Promise<void> {
     await this.categoriesService.deleteCategory(id);
   }
 
   @Post('/:categoryId/player/:playerId')
   async addPlayerToCategory(
-    @Param('categoryId', CategoriesIdParamValidationPipe) categoryId: string,
-    @Param('playerId', CategoriesIdParamValidationPipe) playerId: string,
+    @Param('categoryId', ParamsValidationPipe) categoryId: string,
+    @Param('playerId', ParamsValidationPipe) playerId: string,
   ) {
     return await this.categoriesService.addPlayerToCategory(
       categoryId,
